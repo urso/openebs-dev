@@ -1,0 +1,96 @@
+#cloud-config
+
+password: password
+chpasswd:
+  expire: False
+ssh_pwauth: True
+
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    enp1s0:
+      dhcp4: true
+      dhcp6: false
+
+packages:
+  - qemu-guest-agent
+  - docker.io
+  - docker-compose
+
+package_upgrade: true
+package_update: true
+
+# Install additional kernel modules
+apt:
+  sources_list: |
+    deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse
+    deb http://security.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse
+    deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse
+
+# Configure hugepages at runtime (7GB = 3584 pages of 2MB each)
+# Enable IOMMU
+bootcmd:
+  - echo 'GRUB_CMDLINE_LINUX_DEFAULT="console=tty1 console=ttyS0,115200n8 intel_iommu=on amd_iommu=on iommu=pt"' > /etc/default/grub.d/99-iommu.cfg
+
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - mkdir -p /mnt/workspace
+  # Setup Docker
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker,disk,kvm ubuntu
+  # Install additional kernel modules
+  - apt install -y linux-modules-extra-$(uname -r)
+  # Install Nix package manager (non-interactive)
+  - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
+  - echo '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> /home/ubuntu/.bashrc
+  - echo '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> /root/.bashrc
+  # Load required kernel modules
+  - modprobe -a nbd xfs nvmet nvme_fabrics nvmet_rdma nvme_tcp nvme_rdma nvme_loop vfio
+  # Make modules load on boot
+  - echo "nbd" >> /etc/modules
+  - echo "xfs" >> /etc/modules
+  - echo "nvmet" >> /etc/modules
+  - echo "nvme_fabrics" >> /etc/modules
+  - echo "nvmet_rdma" >> /etc/modules
+  - echo "nvme_tcp" >> /etc/modules
+  - echo "nvme_rdma" >> /etc/modules
+  - echo "nvme_loop" >> /etc/modules
+  - echo "vfio" >> /etc/modules
+  # Configure udev rules for nvme-fabrics access by disk group
+  - |
+    cat > /etc/udev/rules.d/99-nvme-fabrics.rules << 'EOF'
+    # Allow disk group read/write access to nvme-fabrics
+    KERNEL=="nvme-fabrics", GROUP="disk", MODE="0660"
+    EOF
+  # Configure hugepages at runtime
+  - echo 3584 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+  # Make hugepages persistent across reboots
+  - echo "vm.nr_hugepages=3584" >> /etc/sysctl.conf
+  # Mount hugepages filesystem
+  - mkdir -p /dev/hugepages
+  - mount -t hugetlbfs hugetlbfs /dev/hugepages
+  # Make hugepages mount persistent
+  - echo "hugetlbfs /dev/hugepages hugetlbfs defaults 0 0" >> /etc/fstab
+  # Create systemd service to mount workspace after boot
+  - |
+    cat > /etc/systemd/system/mount-workspace.service << 'EOF'
+    [Unit]
+    Description=Mount workspace filesystem
+    After=multi-user.target
+    
+    [Service]
+    Type=oneshot
+    ExecStart=/bin/mount -t 9p -o trans=virtio,version=9p2000.L workspace /mnt/workspace
+    RemainAfterExit=yes
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+  - systemctl enable mount-workspace.service
+  # Update GRUB for IOMMU settings
+  - update-grub
+  # Reboot to apply IOMMU kernel parameters
+  - reboot
