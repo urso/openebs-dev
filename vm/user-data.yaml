@@ -17,6 +17,7 @@ packages:
   - qemu-guest-agent
   - docker.io
   - docker-compose
+  - nvme-cli
 
 package_upgrade: true
 package_update: true
@@ -42,11 +43,18 @@ runcmd:
   - systemctl start docker
   - usermod -aG docker,disk,kvm ubuntu
   # Install additional kernel modules
-  - apt install -y linux-modules-extra-$(uname -r)
+  - apt install -y linux-modules-extra-generic
   # Install Nix package manager (non-interactive)
   - curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm
   - echo '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> /home/ubuntu/.bashrc
   - echo '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' >> /root/.bashrc
+  # Install rustup for both ubuntu user and root
+  - sudo -u ubuntu bash -c 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+  - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  - echo '. /home/ubuntu/.cargo/env' >> /home/ubuntu/.bashrc
+  - echo '. /root/.cargo/env' >> /root/.bashrc
+  # Configure sudo to include Nix in PATH
+  - echo 'Defaults secure_path="/nix/var/nix/profiles/default/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' > /etc/sudoers.d/99-nix-path
   # Load required kernel modules
   - modprobe -a nbd xfs nvmet nvme_fabrics nvmet_rdma nvme_tcp nvme_rdma nvme_loop vfio
   # Make modules load on boot

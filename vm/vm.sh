@@ -1,6 +1,8 @@
 #!/usr/bin/bash
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+IMAGES_DIR="$SCRIPT_DIR/images"
+DISKS_DIR="$SCRIPT_DIR/disks"
 
 CMD="${1:-help}"
 shift
@@ -41,7 +43,7 @@ ADDITIONAL_DISK_COUNT="${ADDITIONAL_DISK_COUNT:-3}"
 ADDITIONAL_DISK_SIZE="${ADDITIONAL_DISK_SIZE:-1G}"
 WORKSPACE_MOUNT_ENABLED="${WORKSPACE_MOUNT_ENABLED:-true}"
 WORKSPACE_SOURCE_PATH="${WORKSPACE_SOURCE_PATH:-$WORKSPACE_DIR}"
-VM_MEMORY="${VM_MEMORY:-16384}"
+VM_MEMORY="${VM_MEMORY:-32768}"
 VM_CPUS="${VM_CPUS:-16}"
 VM_NETWORK="${VM_NETWORK:-bridge=virbr0}"
 
@@ -189,15 +191,17 @@ cmd_start() {
 
   local memory="$VM_MEMORY"
   local vcpus="$VM_CPUS"
-  local image_name="mayastor-test-vm.qcow2"
+  local image_name="$DISKS_DIR/mayastor-test-vm.qcow2"
   local network="$VM_NETWORK"
 
   # Download cloud image if not exists
-  mkdir -p isos
-  local cloud_image_file="isos/noble-server-cloudimg-amd64.img"
+  mkdir -p "$IMAGES_DIR"
+  mkdir -p "$DISKS_DIR"
+
+  local cloud_image_file="$IMAGES_DIR/noble-server-cloudimg-amd64.img"
   if [[ ! -f "$cloud_image_file" ]]; then
     echo "Downloading cloud image..."
-    (cd isos && wget "$CLOUD_IMAGE" -O noble-server-cloudimg-amd64.img)
+    (cd "$IMAGES_DIR" && wget "$CLOUD_IMAGE" -O noble-server-cloudimg-amd64.img)
   else
     echo "Cloud image already exists"
   fi
@@ -209,13 +213,13 @@ cmd_start() {
   fi
 
   echo "Creating new ${VM_DISK_SIZE} disk image..."
-  qemu-img create -f qcow2 -F qcow2 -b isos/noble-server-cloudimg-amd64.img "$image_name" "$VM_DISK_SIZE"
+  qemu-img create -f qcow2 -F qcow2 -b "$IMAGES_DIR/noble-server-cloudimg-amd64.img" "$image_name" "$VM_DISK_SIZE"
 
   # Create storage devices for Mayastor testing
   if [[ "$ADDITIONAL_DISK_COUNT" -gt 0 ]]; then
     echo "Creating ${ADDITIONAL_DISK_COUNT}x${ADDITIONAL_DISK_SIZE} storage devices for Mayastor testing..."
     for ((i=1; i<=ADDITIONAL_DISK_COUNT; i++)); do
-      local storage_disk="${VM_NAME}-storage${i}.qcow2"
+      local storage_disk="${DISKS_DIR}/${VM_NAME}-storage${i}.qcow2"
       if [[ -f "$storage_disk" ]]; then
         rm "$storage_disk"
       fi
@@ -239,12 +243,12 @@ cmd_start() {
 
   # Add additional storage disks
   for ((i=1; i<=ADDITIONAL_DISK_COUNT; i++)); do
-    virt_install_cmd+=(--disk bus=virtio,path="${VM_NAME}-storage${i}.qcow2")
+    virt_install_cmd+=(--disk bus=virtio,path="${DISKS_DIR}/${VM_NAME}-storage${i}.qcow2")
   done
 
   # Add workspace filesystem if enabled
   if [[ "$WORKSPACE_MOUNT_ENABLED" == "true" ]]; then
-    virt_install_cmd+=(--filesystem type=mount,accessmode=passthrough,source="$WORKSPACE_SOURCE_PATH",target=workspace)
+    virt_install_cmd+=(--filesystem type=mount,accessmode=mapped,source="$WORKSPACE_SOURCE_PATH",target=workspace)
   fi
 
   # Add remaining options
@@ -252,7 +256,7 @@ cmd_start() {
     --network "$network"
     --machine q35
     --iommu model=intel
-    --cloud-init user-data=user-data.yaml
+    --cloud-init user-data="$SCRIPT_DIR/user-data.yaml"
   )
 
   # Execute the command
@@ -286,15 +290,21 @@ cmd_destroy() {
   fi
 
   # Clean up additional storage disks and snapshot files
-  local storage_disks=("${VM_NAME}"-storage*.qcow2)
+  local storage_disks=("${DISKS_DIR}/${VM_NAME}"-storage*.qcow2)
   if [[ -f "${storage_disks[0]}" ]]; then
     echo "Removing additional storage disks..."
-    rm -f "${VM_NAME}"-storage*.qcow2
+    rm -f "${DISKS_DIR}/${VM_NAME}"-storage*.qcow2
   fi
 
-  if [[ -f "${VM_NAME}.snapshot" ]]; then
+  if [[ -f "${DISKS_DIR}/${VM_NAME}.snapshot" ]]; then
     echo "Removing snapshot file..."
-    rm -f "${VM_NAME}.snapshot"
+    rm -f "${DISKS_DIR}/${VM_NAME}.snapshot"
+  fi
+
+  # Clean up entire disks directory if it exists and is empty or only contains our VM files
+  if [[ -d "$DISKS_DIR" ]]; then
+    echo "Cleaning up disks directory..."
+    rm -rf "$DISKS_DIR"
   fi
 
   echo "VM $VM_NAME destroyed and cleaned up"
