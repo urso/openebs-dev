@@ -113,36 +113,63 @@ Children are identified by URIs that specify the storage backend:
 
 *Example usage in `io-engine/src/bdev/lvs.rs:6-18`*
 
-## NVMe Reservations for Split-Brain Prevention
+## NVMe Reservations Implementation
 
-### Reservation Operations (`io-engine/src/bdev/nexus/nexus_child.rs:507-574`)
-
-#### Registration
+### Configuration (`io-engine/src/bdev/nexus/nexus_bdev.rs:148`)
 ```rust
-async fn resv_register(&self, hdl: &dyn BlockDeviceHandle, new_key: u64) -> Result<(), CoreError>
+let resv_type = if std::env::var("NEXUS_NVMF_RESV_ENABLE").is_ok() {
+    NvmeReservation::WriteExclusiveAllRegs  // Default HA reservation type
+} else {
+    NvmeReservation::Reserved               // Reservations disabled
+};
 ```
 
-#### Release
-```rust  
-async fn resv_release(&self, hdl: &dyn BlockDeviceHandle, current_key: u64, 
-                     resv_type: NvmeReservation, release_action: u8) -> Result<(), CoreError>
+### Reservation API (`io-engine/src/bdev/nexus/nexus_child.rs:770-847`)
+
+#### Acquire Write Exclusive Access
+```rust
+pub async fn acquire_write_exclusive(&self, hdl: &dyn BlockDeviceHandle, key: u64) -> Result<(), ChildError> {
+    self.resv_acquire(hdl, key, NvmeReservation::WriteExclusiveAllRegs, 0).await
+}
 ```
 
-#### Status Check
+#### Release Current Reservation  
+```rust
+pub async fn release_reservation(&self, hdl: &dyn BlockDeviceHandle, key: u64) -> Result<(), ChildError> {
+    self.resv_release(hdl, key, NvmeReservation::WriteExclusiveAllRegs, 0).await
+}
+```
+
+#### Check Holder Status
 ```rust
 async fn resv_holder(&self, hdl: &dyn BlockDeviceHandle) -> Result<Option<(u8, u64, [u8; 16])>, ChildError>
+// Returns: (reservation_type, reservation_key, registrant_guid)
 ```
 
-### Reservation Types
-- **ExclusiveAccessAllRegs**: Exclusive access across all registered controllers
-- **WriteExclusiveAllRegs**: Write exclusive access across all registered controllers
+### PTPL (Persistence Through Power Loss) Support (`io-engine/src/bdev/nexus/nexus_child.rs:517`)
+```rust
+if ptpl_feature {
+    // Enable persistence - reservations survive storage device power cycles
+    let ptpl_dir = MayastorEnvironment::global_or_default().ptpl_dir();
+    debug!("PTPL enabled for child {}, using directory: {:?}", self.name, ptpl_dir);
+}
+```
 
-### Features
-- **Split-brain prevention**: Only one Nexus can hold write reservation per child
-- **Automatic preemption**: Can steal reservations from failed Nexus instances
-- **Persistence Through Power Loss (PTPL)**: Reservations survive storage device reboots
+### Split-Brain Prevention Mechanism
+- **WriteExclusiveAllRegs**: Only reservation holder can write to child storage
+- **HA switchover**: New Nexus preempts existing reservation during failover
+- **I/O conflict detection**: Write failures trigger immediate nexus self-shutdown
+- **Environment control**: `NEXUS_NVMF_RESV_ENABLE=1` activates reservation system
 
-*Source: `io-engine/src/bdev/nexus/nexus_bdev.rs:107-130`*
+### Self-Shutdown on Reservation Conflicts (`io-engine/src/bdev/nexus/nexus_io.rs:685-696`)
+```rust
+// If write fails due to reservation conflict, nexus shuts itself down
+if reservation_conflict_detected {
+    self.try_self_shutdown_nexus();  // Prevents split-brain condition
+}
+```
+
+*Implementation: `io-engine/src/bdev/nexus/nexus_child.rs:507-589`*
 
 ## I/O Logging and Rebuild Optimization
 

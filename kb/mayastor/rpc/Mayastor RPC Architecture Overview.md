@@ -269,9 +269,9 @@ Network Boundary          Process Boundary         Kernel Boundary
 
 ## See Also
 
-- [Mayastor IO-Engine gRPC API Reference](mayastor-io-engine-g-rpc-api-reference) - Service definitions
-- [Mayastor IO-Engine JSON RPC API Reference](mayastor-io-engine-json-rpc-api-reference) - Method details
-- [Mayastor Controller REST API Reference](mayastor-controller-rest-api-reference) - HTTP interface details
+- [[Mayastor IO-Engine gRPC API Reference]] - Service definitions
+- [[Mayastor IO-Engine JSON RPC API Reference]] - Method details
+- [[Mayastor Controller REST API Reference]] - HTTP interface details
 - [SPDK Documentation](https://spdk.io/doc/) - Underlying framework details
 
 ---

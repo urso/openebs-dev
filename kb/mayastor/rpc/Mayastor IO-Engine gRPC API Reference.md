@@ -90,7 +90,7 @@ Proxy for SPDK JSON RPC methods over gRPC.
 **Key Methods:**
 - `JsonRpcCall()` - Execute SPDK RPC method
 
-**See:** [Mayastor IO-Engine JSON RPC API](mayastor-io-engine-jsonrpc-api#grpc-proxy) for details.
+**See:** [[Mayastor IO-Engine JSON RPC API Reference]]] for details.
 
 #### BdevService (`v1.bdev.BdevRpc`)
 Block device management operations.
@@ -163,9 +163,7 @@ The gRPC server currently does not implement authentication. It should be:
 
 ## See Also
 
-- [Mayastor IO-Engine JSON RPC API](mayastor-io-engine-jsonrpc-api) - SPDK method access
-- [Mayastor RPC Deployment Guide](mayastor-rpc-deployment-guide) - Kubernetes setup
-- [Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview) - Technical internals
+- [[Mayastor IO-Engine JSON RPC API Reference]] - SPDK method access
 
 ---
 

@@ -8,12 +8,6 @@ permalink: mayastor/rpc/mayastor-rpc-interfaces-documentation-index
 
 This documentation covers the Remote Procedure Call (RPC) interfaces provided by Mayastor components for programmatic control and integration.
 
-## Quick Reference
-
-- **[Mayastor IO-Engine gRPC API](mayastor-io-engine-g-rpc-api-reference)** - Network-accessible service APIs for storage operations
-- **[Mayastor IO-Engine JSON RPC API](mayastor-io-engine-json-rpc-api-reference)** - SPDK proxy and custom methods via Unix socket
-- **[Mayastor Controller REST API](mayastor-controller-rest-api-reference)** - HTTP/HTTPS interface for storage management
-- **[Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview)** - Technical deep-dive into RPC communication flow
 
 ## Interface Comparison
 
@@ -26,16 +20,14 @@ This documentation covers the Remote Procedure Call (RPC) interfaces provided by
 ## Getting Started
 
 ### For Control Plane Integration
-Start with **[Mayastor IO-Engine gRPC API](mayastor-io-engine-g-rpc-api-reference)** to understand the primary network interface for managing storage pools, replicas, and nexus volumes.
+Start with **[[Mayastor IO-Engine gRPC API Reference]]** to understand the primary network interface for managing storage pools, replicas, and nexus volumes.
 
 ### For User-Facing Management
-Use **[Mayastor Controller REST API](mayastor-controller-rest-api-reference)** for HTTP-based management operations with OpenAPI documentation.
+Use **[[Mayastor Controller REST API Reference]]** for HTTP-based management operations with OpenAPI documentation.
 
 ### For SPDK Method Access
-Use **[Mayastor IO-Engine JSON RPC API](mayastor-io-engine-json-rpc-api-reference)** when you need direct access to SPDK functionality or custom io-engine methods.
+Use **[[Mayastor IO-Engine JSON RPC API Reference]]** when you need direct access to SPDK functionality or custom io-engine methods.
 
-### For Understanding Internals
-Read **[Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview)** to understand how the different RPC interfaces work together.
 
 ## Component Architecture
 
@@ -64,10 +56,6 @@ Read **[Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview)*
     └─────────────┘
 ```
 
-## Related Documentation
-
-- [Mayastor Architecture Overview](../../architecture/mayastor-overview)
-- [Kubernetes Integration Guide](../../kubernetes/integration-guide)
 
 ---
 

@@ -174,9 +174,8 @@ curl -k http://localhost:8081/v0/api/spec
 
 ## See Also
 
-- [Mayastor IO-Engine gRPC API Reference](mayastor-io-engine-g-rpc-api-reference) - Backend storage operations
-- [Mayastor IO-Engine JSON RPC API Reference](mayastor-io-engine-json-rpc-api-reference) - SPDK method access  
-- [Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview) - System design overview
+- [[Mayastor IO-Engine gRPC API Reference]] - Backend storage operations
+- [[Mayastor IO-Engine JSON RPC API Reference]] - SPDK method access  
 - [OpenAPI Specification](https://github.com/openebs/mayastor/blob/develop/controller/control-plane/rest/openapi-specs/v0_api_spec.yaml) - Complete API reference
 
 ---

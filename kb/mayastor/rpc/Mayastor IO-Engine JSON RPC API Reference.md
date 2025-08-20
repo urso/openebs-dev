@@ -259,9 +259,9 @@ io-engine --log-level=trace
 
 ## See Also
 
-- [Mayastor IO-Engine gRPC API Reference](mayastor-io-engine-g-rpc-api-reference#jsonservice) - JsonService details
-- [Mayastor RPC Architecture Overview](mayastor-rpc-architecture-overview) - Protocol translation internals
+- [[Mayastor IO-Engine gRPC API Reference]] - JsonService details
 - [SPDK JSON RPC Documentation](https://spdk.io/doc/jsonrpc.html) - Complete SPDK method reference
+- [[SPDK RPC Overview]] - SPDK RPC implementation details
 
 ---
 
