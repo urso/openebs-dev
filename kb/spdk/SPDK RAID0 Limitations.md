@@ -41,14 +41,19 @@ else if (raid_bdev->min_base_bdevs_operational == raid_bdev->num_base_bdevs) {
 
 ## Implementation-Specific Limitations
 
-### 1. Strip Boundary Restriction
+### 1. Strip Boundary Restriction (Read/Write Operations)
 
-SPDK enforces strict I/O boundaries:
+SPDK enforces strict I/O boundaries for read/write operations:
 
 ```c
-// I/O cannot cross strip boundaries - raid0.c:95-100
-if (raid_io->num_blocks > (raid_bdev->strip_size - offset_in_strip)) {
-    return -EINVAL;  // I/O spans strip boundary - rejected
+// Read/Write I/O cannot cross strip boundaries - raid0.c:95-100
+start_strip = raid_io->offset_blocks >> raid_bdev->strip_size_shift;
+end_strip = (raid_io->offset_blocks + raid_io->num_blocks - 1) >> raid_bdev->strip_size_shift;
+if (start_strip != end_strip && raid_bdev->num_base_bdevs > 1) {
+    assert(false);
+    SPDK_ERRLOG("I/O spans strip boundary!\n");
+    raid_bdev_io_complete(raid_io, SPDK_BDEV_IO_STATUS_FAILED);
+    return;
 }
 ```
 
@@ -56,6 +61,8 @@ if (raid_io->num_blocks > (raid_bdev->strip_size - offset_in_strip)) {
 - **Automatic splitting**: Framework splits oversized I/O operations
 - **Performance overhead**: Large I/O may become multiple operations
 - **Application consideration**: Align I/O to strip boundaries for optimal performance - see [[SPDK RAID0 Performance]] for tuning guidelines
+
+**Note**: **FLUSH/UNMAP operations** can span multiple strips using advanced splitting logic `raid0.c:296-360`, but read/write operations remain restricted.
 
 ### 2. Minimum Size Constraint
 
